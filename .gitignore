@@ -1,0 +1,8 @@
+__pycache__/
+lib/
+share/
+bin/
+TODOs*
+env
+*.png
+*.cfg
