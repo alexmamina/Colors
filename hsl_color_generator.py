@@ -1,5 +1,5 @@
 from random import randint
-from PIL import ImageColor, Image
+from PIL import Image
 from dataclasses import dataclass
 from typing import Any, Optional
 import colorsys
@@ -103,18 +103,12 @@ class ColorGenerator:
     def random_color(self) -> HSL:
         return HSL(randint(0, 360), randint(0, 100), randint(0, 100))
 
-    def hex_to_rgb(self, hex_number: str) -> RGB:
-        # Take the first two, mid two, last two chars of the hex and convert from 16 base
-        # red, green, blue = [int(hex_number[i:i + 2], 16) for i in (0, 2, 4)]
-        red, green, blue = ImageColor.getcolor(hex_number, "RGB")
-        return RGB(red, green, blue)
-
     def create_color_image(self, colors: list[list[str]], filename: Optional[str] = None):
         new = self.expand_colors_to_board(colors, 200)
         i = Image.new("RGBA", (len(new), len(new[0])))
         for r in range(len(new)):
             for c in range(len(new)):
-                i.putpixel((r, c), self.hex_to_rgb(new[r][c]).as_tuple())
+                i.putpixel((r, c), RGB.from_hex(new[r][c]).as_tuple())
         if filename:
             i.save(filename)
         else:
