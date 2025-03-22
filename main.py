@@ -57,24 +57,30 @@ class Board:
         self.board = self.shuffle_board_from_solution()
 
     def shuffle_board_from_solution(self) -> list[list[str]]:
-        pin_tl, pin_tr, pin_bl, pin_br = PinnedPoints(self.size).get_fields_from_points(self)
+        corner_points = PinnedPoints(self.size).get_fields_from_points(self)
         colors = self.flatten_board(self.solution)
-        ind_tl = colors.index(pin_tl)
-        ind_tr = colors.index(pin_tr)
-        ind_bl = colors.index(pin_bl)
-        ind_br = colors.index(pin_br)
-
-        shuffled_pinned_colors = [pin_tl] + \
-            sample(colors[ind_tl + 1: ind_tr], len(colors[ind_tl + 1: ind_tr])) + [pin_tr] + \
-            sample(colors[ind_tr + 1: ind_bl], len(colors[ind_tr + 1: ind_bl])) + [pin_bl] + \
-            sample(colors[ind_bl + 1: ind_br], len(colors[ind_bl + 1: ind_br])) + [pin_br]
-        print(shuffled_pinned_colors)
-
-        assert shuffled_pinned_colors.index(pin_tl) == ind_tl and \
-            shuffled_pinned_colors.index(pin_tr) == ind_tr and \
-            shuffled_pinned_colors.index(pin_bl) == ind_bl and \
-            shuffled_pinned_colors.index(pin_br) == ind_br
-        return self.from_list(shuffled_pinned_colors)
+        # The analog of a 'shuffle' - sample N random colors from a list where N is just all of them
+        shuffled_colors = sample(colors, len(colors))
+        # Remove corner points from the shuffled list to set them explicitly
+        for point in corner_points:
+            shuffled_colors.pop(shuffled_colors.index(point))
+        color_board = []
+        for row in range(self.size):
+            new_row = []
+            for col in range(self.size):
+                if row == 0 and col == 0:
+                    new_row.append(corner_points[0])
+                elif row == 0 and col == self.size - 1:
+                    new_row.append(corner_points[1])
+                elif row == self.size - 1 and col == 0:
+                    new_row.append(corner_points[2])
+                elif row == self.size - 1 and col == self.size - 1:
+                    new_row.append(corner_points[3])
+                else:
+                    new_row.append(shuffled_colors.pop())
+            color_board.append(new_row)
+        print(color_board)
+        return color_board
 
     def check_solved(self) -> bool:
         return self.solution == self.board
@@ -111,12 +117,6 @@ class Board:
             result += row
         return result
 
-    def from_list(self, color_list: list[str]) -> list[list[str]]:
-        board = []
-        for i in range(self.size):
-            board.append(color_list[i * self.size:i * self.size + self.size])
-        return board
-
     def pretty(self):
         for row in self.board:
             print(row)
@@ -124,7 +124,7 @@ class Board:
 
 
 class ColorLogic:
-    def __init__(self, board_size: int, ui: "Optional[QBoard]", show_total_moves: bool = True):
+    def __init__(self, board_size: int, ui: "QBoard", show_total_moves: bool = True):
         self.board_size = board_size
         self.color_board = Board(board_size)
         self.selected: Optional[Coordinates] = None
@@ -197,8 +197,3 @@ if __name__ == "__main__":
     except (KeyError, ValueError):
         print("Please enter a valid number for the board size!")
         sys.exit(1)
-
-    # todo Generate colors (4 points of reference with a gradient - limit to brighter/pastel/nicer
-    # colors?)
-
-    # todo rectangle

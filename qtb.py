@@ -14,9 +14,6 @@ DEFAULT_WINDOW_SIZE = 500
 RED = "#ff0000"
 GREEN = "#22ff00"
 
-# todo size
-# todo palette saved in transposed/turned format
-
 
 class ColorButton(qwidget.QPushButton):
     def __init__(self, color: str, window_height: int, btn_row_size: int):
@@ -51,7 +48,6 @@ class ColorButton(qwidget.QPushButton):
         font = self.font()
         font.setPointSize(50)
         self.setFont(font)
-        # todo 50 is too big for size 15
         self.setText(".")
         self.setEnabled(False)
 
