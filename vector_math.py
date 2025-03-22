@@ -1,5 +1,7 @@
 import math
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+# from matplotlib.pyplot import Circle
+from random import randint
 from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from color_generator import RGB
@@ -38,16 +40,18 @@ def cross(one: Vector, two: Vector) -> Vector:
                   one.item_list[0] * two.item_list[1] - one.item_list[1] * two.item_list[0])
 
 
-# def perpendicular_vector(vector: Vector, length: float) -> Vector:
-#     # Dot product of two vectors is 0.
-#     red * vector[0] + green * vector[1] + blue * vector[2] = 0
+def coords_from_circle(center: tuple[int, int], radius: int, angle: float) -> tuple[int, int]:
+    a, b = center
+    random_angle = math.radians(angle)
+    x = round(radius * math.cos(random_angle) + a)
+    y = round(radius * math.sin(random_angle) + b)
+    return x, y
 
-def draw(points: list["RGB"]):
-    figure = plt.figure().add_subplot(projection='3d')
-    ax = plt.gca()
-    ax.set_xlim(255.0)
-    ax.set_ylim(255.0)
 
-    for point in points:
-        figure.scatter(point.r, point.g, point.b, c=point.to_hex())
-    plt.show()
+def points_on_a_circle(center: tuple[int, int], radius: int):
+    corners = []
+    random_angle_degrees = randint(0, 360)
+    # Create points at different corners
+    for delta in [0, 90, 270, 180]:
+        corners.append(coords_from_circle(center, radius, random_angle_degrees + delta))
+    return corners

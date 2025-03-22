@@ -15,6 +15,7 @@ RED = "#ff0000"
 GREEN = "#22ff00"
 
 # todo size
+# todo palette saved in transposed/turned format
 
 
 class ColorButton(qwidget.QPushButton):

@@ -3,14 +3,11 @@ from PIL import Image
 from dataclasses import dataclass
 from typing import Any, Optional
 import colorsys
-from vector_math import Vector
+from vector_math import Vector, points_on_a_circle
 import sys
 import matplotlib.pyplot as plt
 from color_generator import RGB
 import copy
-
-
-STEP_SIZE = 15
 
 
 def draw(points: list["HSL"]):
@@ -33,6 +30,8 @@ def draw(points: list["HSL"]):
 
 @dataclass
 class HSL:
+    # Pinned saturation: palettes from bright to pastel, more visible changes per step
+    # Pinned lightness: more uniform gradient, less visible changes between colors
     h: int
     s: int
     l: int
@@ -58,6 +57,15 @@ class HSL:
 
     def to_rgb(self) -> RGB:
         return RGB(*[int(255 * x) for x in colorsys.hls_to_rgb(*self.to_hls())])
+
+    def min_distance_to_bounds(self) -> int:
+        # H: 0-360
+        # S: 0-100
+        # L: 0-100
+        min_h = min(self.h, 360 - self.h)
+        min_s = min(self.s, 100 - self.s)
+        min_l = min(self.l, 100 - self.l)
+        return min(min_h, min_s, min_l)
 
     @classmethod
     def from_list(cls, int_list: list[int]) -> "HSL":
@@ -131,7 +139,8 @@ class ColorGenerator:
         return result
 
     def generate_board(self, size: int) -> list[list[HSL]]:
-        [tl, tr], [bl, br] = self.generate_starting_points()
+        # [tl, tr], [bl, br] = self.generate_starting_points()
+        [tl, tr], [bl, br] = self.generate_points_from_circle()
         results = []
         rightcol = self.linear_gradient(tr, br, size)
         leftcol = self.linear_gradient(tl, bl, size)
@@ -176,6 +185,24 @@ class ColorGenerator:
         print(f"Saturation: {saturation}, points: {[(y.h, y.l) for x in corners for y in x]}")
         return corners
 
+    def generate_points_from_circle(self) -> list[list[HSL]]:
+        centre = self.random_color()
+        pin = centre.s
+        # Largest circle before we reach the HSL limits
+        max_radius = centre.min_distance_to_bounds()
+        min_radius = 30
+        while min_radius + 2 >= max_radius - 2:
+            centre = self.random_color()
+            pin = centre.s
+            max_radius = centre.min_distance_to_bounds()
+        radius = randint(min_radius + 1, max_radius - 1)
+
+        # Generate points
+        points = points_on_a_circle((centre.h, centre.s), radius)
+        points = [HSL(h, pin, l) for h, l in points]
+        points = [points[:2], points[2:]]
+        return points
+
     def generate_initial_color_board(self, size: int) -> list[list[str]]:
         b = self.generate_board(size)
         final_b = []
@@ -214,11 +241,11 @@ if __name__ == "__main__":
         except AssertionError:
             print(f"#{i} for size {size} - out of bounds")
             pass
-    draw(
-        [
-            HSL(h=247, s=100, l=50),
-            HSL(h=17, s=100, l=50),
-            HSL(h=351, s=100, l=56),
-            HSL(h=310, s=100, l=50),
-        ]
-    )
+    # draw(
+    #     [
+    #         HSL(h=247, s=100, l=50),
+    #         HSL(h=17, s=100, l=50),
+    #         HSL(h=351, s=100, l=56),
+    #         HSL(h=310, s=100, l=50),
+    #     ]
+    # )
