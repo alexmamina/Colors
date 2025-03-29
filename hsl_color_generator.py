@@ -76,6 +76,12 @@ class HSL:
         return HSL(int(int_tuple[0]), int(int_tuple[1]), int(int_tuple[2]))
 
     @classmethod
+    def average(cls, one: "HSL", two: "HSL") -> "HSL":
+        return HSL(
+            round((one.h + two.h) / 2), round((one.s + two.s) / 2), round((one.l + two.l) / 2)
+        )
+
+    @classmethod
     def coordinates_from_vector(cls, vec: Vector, head: "HSL", reverse: bool = False) -> "HSL":
         # print(vec.item_list[0] + head.h,
         #       vec.item_list[1] + head.s,
@@ -138,9 +144,31 @@ class ColorGenerator:
             result.append(hsl)
         return result
 
+    # def generate_board(self, size: int) -> list[list[HSL]]:
+    #     # [tl, tr], [bl, br] = self.generate_starting_points()
+    #     # [tl, tr], [bl, br] = self.generate_points_from_circle_smaller_range()
+    #     [tl, tr], [bl, br] = self.generate_points_from_circle_across_colors()
+    #     results = []
+    #     hor_gradients = []
+    #     ver_gradients = []
+    #     rightcol = self.linear_gradient(tr, br, size)
+    #     leftcol = self.linear_gradient(tl, bl, size)
+    #     toprow = self.linear_gradient(tl, tr, size)
+    #     bottomrow = self.linear_gradient(bl, br, size)
+    #     for i in range(len(rightcol)):
+    #         hor_gradients.append(self.linear_gradient(leftcol[i], rightcol[i], size))
+    #         ver_gradients.append(self.linear_gradient(toprow[i], bottomrow[i], size))
+    #     for row in range(len(hor_gradients)):
+    #         avg_row = []
+    #         for col in range(len(hor_gradients)):
+    #             avg_row.append(HSL.average(hor_gradients[row][col], ver_gradients[row][col]))
+    #         results.append(avg_row)
+    #     return results
+
     def generate_board(self, size: int) -> list[list[HSL]]:
         # [tl, tr], [bl, br] = self.generate_starting_points()
-        [tl, tr], [bl, br] = self.generate_points_from_circle()
+        [tl, tr], [bl, br] = self.generate_points_from_circle_smaller_range()
+        # [tl, tr], [bl, br] = self.generate_points_from_circle_across_colors()
         results = []
         rightcol = self.linear_gradient(tr, br, size)
         leftcol = self.linear_gradient(tl, bl, size)
@@ -185,7 +213,7 @@ class ColorGenerator:
         print(f"Saturation: {saturation}, points: {[(y.h, y.l) for x in corners for y in x]}")
         return corners
 
-    def generate_points_from_circle(self) -> list[list[HSL]]:
+    def generate_points_from_circle_smaller_range(self) -> list[list[HSL]]:
         centre = self.random_color()
         pin = centre.s
         # Largest circle before we reach the HSL limits
@@ -200,6 +228,25 @@ class ColorGenerator:
         # Generate points
         points = points_on_a_circle((centre.h, centre.s), radius)
         points = [HSL(h, pin, l) for h, l in points]
+        points = [points[:2], points[2:]]
+        return points
+
+    def generate_points_from_circle_across_colors(self) -> list[list[HSL]]:
+        centre = (randint(0, 100), randint(0, 100))
+        pin = randint(5, 90)
+        # Largest circle before we reach the HSL limits
+        max_radius = min(centre[0], centre[1], 100 - centre[0], 100 - centre[1], pin, 100 - pin)
+        min_radius = 10
+        while min_radius + 2 >= max_radius - 2:
+            centre = (randint(0, 100), randint(0, 100))
+            pin = randint(1, 100)
+            # Largest circle before we reach the HSL limits
+            max_radius = min(centre[0], centre[1], 100 - centre[0], 100 - centre[1], pin, 100 - pin)
+        radius = randint(min_radius + 1, max_radius - 1)
+
+        # Generate points
+        points = points_on_a_circle((centre[0], centre[1]), radius)
+        points = [HSL(round(h * 3.6), pin, l) for h, l in points]
         points = [points[:2], points[2:]]
         return points
 
