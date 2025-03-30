@@ -51,6 +51,7 @@ class PinnedPoints:
 
 class Board:
     def __init__(self, size: int):
+        assert size > 2, "The width of the board must be greater than 2 colors!"
         self.size = size
         self.generator = ColorGenerator(size)
         self.solution = self.generator.generate_initial_color_board(self.size)

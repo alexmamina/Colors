@@ -18,22 +18,22 @@ GREEN = "#22ff00"
 class ColorButton(qwidget.QPushButton):
     def __init__(self, color: str, window_height: int, btn_row_size: int):
         super(ColorButton, self).__init__()
-        button_height = floor(window_height / btn_row_size) - 4
+        button_height = floor(window_height / btn_row_size)
         self.setAutoFillBackground(True)
         self.setMinimumSize(qcore.QSize(button_height, button_height))
+        # Allow resizing buttons
+        policy = qwidget.QSizePolicy.Policy.Minimum
+        self.setSizePolicy(qwidget.QSizePolicy(policy, policy))
         self.fg = "black"
         self.set_color(color)
 
     def set_color(self, color: str):
         self.bg = color
-        self.border = None
+        self.set_border(color)
         self.update_style()
 
     def set_border(self, border: str):
-        if border:
-            self.border = f"2px solid {border}"
-        else:
-            self.border = None
+        self.border = f"2px solid {border}"
         self.update_style()
 
     def update_style(self):
@@ -104,11 +104,11 @@ class QBoard(qwidget.QMainWindow):
         self.pinned_points = PinnedPoints(size)
         self.button_grid, self.button_holder = self.create_button_grid(size)
         self.setCentralWidget(self.button_holder)
-        self.setFixedSize(qcore.QSize(window_height, window_height))
         shape = self.frameGeometry()
         shape.moveCenter(center)
         self.move(shape.topLeft())
         self.setup_toolbar()
+        self.setMinimumSize(self.sizeHint())
 
     # def dragEnterEvent(self, e):
     #     e.accept()
@@ -224,7 +224,7 @@ class QBoard(qwidget.QMainWindow):
     def reset_hint(self):
         for row in self.button_grid:
             for btn in row:
-                btn.set_border("")
+                btn.set_border(btn.bg)
 
     def start_new(self):
 
