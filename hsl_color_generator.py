@@ -122,7 +122,8 @@ class ColorGenerator:
         i = Image.new("RGBA", (len(new), len(new[0])))
         for r in range(len(new)):
             for c in range(len(new)):
-                i.putpixel((r, c), RGB.from_hex(new[r][c]).as_tuple())
+                # c is x, r is y.
+                i.putpixel((c, r), RGB.from_hex(new[r][c]).as_tuple())
         if filename:
             i.save(filename)
         else:

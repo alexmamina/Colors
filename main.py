@@ -38,8 +38,8 @@ class PinnedPoints:
         top_left = board.get_solution_cell(self.TOPLEFT)
         top_right = board.get_solution_cell(self.TOPRIGHT)
         bottom_left = board.get_solution_cell(self.BOTTOMLEFT)
-        bottom__right = board.get_solution_cell(self.BOTTOMRIGHT)
-        return top_left, top_right, bottom_left, bottom__right
+        bottom_right = board.get_solution_cell(self.BOTTOMRIGHT)
+        return top_left, top_right, bottom_left, bottom_right
 
     def has(self, coords: Coordinates) -> bool:
         equals = coords == self.TOPLEFT or \
