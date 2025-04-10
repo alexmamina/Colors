@@ -37,12 +37,21 @@ class ColorButton(qwidget.QPushButton):
         self.update_style()
 
     def update_style(self):
-        style = f"{{background-color: {self.bg}; color: {self.fg}"
-        if self.border:
-            style += f"; border: {self.border};}}"
-        else:
-            style += ";}"
-        self.setStyleSheet(f"QPushButton {style}")
+        darker_shade = qgui.QColor(self.bg).darker(110).name()  # When clicked, button 10% darker
+        contrast_border = qgui.QColor(self.bg).darker(200).name()  # When clicked, add border
+        style = f"""
+            QPushButton {{
+                background-color: {self.bg};
+                color: {self.fg};
+                border: {self.border};
+            }}
+            QPushButton:checked {{
+                background-color: {darker_shade};
+                color: {self.fg};
+                border: 2px solid {contrast_border};
+            }}
+        """
+        self.setStyleSheet(style)
 
     def disable(self):
         font = self.font()
