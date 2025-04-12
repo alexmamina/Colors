@@ -220,9 +220,6 @@ class QBoard(qwidget.QMainWindow):
         if start_new == qwidget.QMessageBox.StandardButton.Yes:
             print("New")
             self.start_new()
-        # else:
-        #     print("Exiting")
-        #     self.close()
 
     def show_hint(self):
         start_coords, where_to_go_coords = self.logic.color_board.hint()
@@ -235,7 +232,6 @@ class QBoard(qwidget.QMainWindow):
                 btn.set_border(btn.bg)
 
     def start_new(self):
-
         size_dialog = AskSize(self)
         size_dialog.exec()
 

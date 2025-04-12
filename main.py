@@ -1,4 +1,3 @@
-import sys
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
@@ -118,11 +117,6 @@ class Board:
             result += row
         return result
 
-    def pretty(self):
-        for row in self.board:
-            print(row)
-        print()
-
 
 class ColorLogic:
     def __init__(self, board_size: int, ui: "QBoard", show_total_moves: bool = True):
@@ -160,41 +154,3 @@ class ColorLogic:
             win_str += f" You have taken {self.total_moves} {total_moves_str} to complete the game"
         print(win_str)
         self.ui.show_win(self.total_moves)
-
-    def loop(self):
-        finish = False
-        while not self.completed and not finish:
-            self.color_board.pretty()
-            if self.selected:
-                self.selected.pretty()
-            string_coords = self.get_input(
-                "Print row, column coordinates separated by space to select a cell to swap"
-            )
-            if string_coords == 'n':
-                finish = True
-            else:
-                try:
-                    row, column = int(string_coords.split()[0]), int(string_coords.split()[1])
-                except (ValueError, IndexError):
-                    print("Invalid number!")
-                    continue
-                if row >= self.board_size or column >= self.board_size:
-                    print("Number too big!")
-                    continue
-                coords = Coordinates(row, column)
-                self.select_and_swap(coords)
-        if self.completed:
-            self.show_win()
-
-    def get_input(self, question: str) -> str:
-        question += " or enter n to exit\n"
-        return input(question)
-
-
-if __name__ == "__main__":
-
-    try:
-        size = int(sys.argv[1])
-    except (KeyError, ValueError):
-        print("Please enter a valid number for the board size!")
-        sys.exit(1)
