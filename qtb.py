@@ -54,10 +54,9 @@ class ColorButton(qwidget.QPushButton):
         self.setStyleSheet(style)
 
     def disable(self):
-        font = self.font()
-        font.setPointSize(50)
-        self.setFont(font)
-        self.setText(".")
+        img = qgui.QPixmap("dot.png")
+        self.setIcon(qgui.QIcon(img))
+        self.setIconSize(self.minimumSize())
         self.setEnabled(False)
 
     # def mouseMoveEvent(self, e):
