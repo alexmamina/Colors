@@ -1,12 +1,10 @@
 from random import randint
 from PIL import Image
-from dataclasses import dataclass
 from typing import Any, Optional
-import colorsys
 from vector_math import Vector, points_on_a_circle
 import sys
 import matplotlib.pyplot as plt
-from color_generator import RGB
+from colors import HSL, RGB
 import copy
 
 
@@ -26,78 +24,6 @@ def draw(points: list["HSL"]):
         )
 
     plt.show()
-
-
-@dataclass
-class HSL:
-    # Pinned saturation: palettes from bright to pastel, more visible changes per step
-    # Pinned lightness: more uniform gradient, less visible changes between colors
-    h: int
-    s: int
-    l: int
-
-    def __init__(self, h: int, s: int, l: int):  # noqa: E741
-        assert h <= 360 and s <= 100 and l <= 100
-        assert h >= 0 and s >= 0 and l >= 0
-        self.h = h
-        self.s = s
-        self.l = l  # noqa: E741
-
-    def as_tuple(self) -> tuple[int, int, int]:
-        return self.h, self.s, self.l
-
-    def __repr__(self) -> str:
-        return f"HSL(h={self.h}, s={self.s}, l={self.l})"
-
-    def to_hls(self) -> tuple:
-        return (self.h / 360, self.l / 100, self.s / 100)
-
-    def to_hex(self) -> str:
-        return self.to_rgb().to_hex()
-
-    def to_rgb(self) -> RGB:
-        return RGB(*[int(255 * x) for x in colorsys.hls_to_rgb(*self.to_hls())])
-
-    def min_distance_to_bounds(self) -> int:
-        # H: 0-360
-        # S: 0-100
-        # L: 0-100
-        min_h = min(self.h, 360 - self.h)
-        min_s = min(self.s, 100 - self.s)
-        min_l = min(self.l, 100 - self.l)
-        return min(min_h, min_s, min_l)
-
-    @classmethod
-    def from_list(cls, int_list: list[int]) -> "HSL":
-        return HSL(int_list[0], int_list[1], int_list[2])
-
-    @classmethod
-    def from_tuple(cls, int_tuple: tuple[Any, Any, Any]) -> "HSL":
-        return HSL(int(int_tuple[0]), int(int_tuple[1]), int(int_tuple[2]))
-
-    @classmethod
-    def average(cls, one: "HSL", two: "HSL") -> "HSL":
-        return HSL(
-            round((one.h + two.h) / 2), round((one.s + two.s) / 2), round((one.l + two.l) / 2)
-        )
-
-    @classmethod
-    def coordinates_from_vector(cls, vec: Vector, head: "HSL", reverse: bool = False) -> "HSL":
-        # print(vec.item_list[0] + head.h,
-        #       vec.item_list[1] + head.s,
-        #       vec.item_list[2] + head.l)
-        if reverse:
-            return HSL(
-                vec.item_list[0] + head.h,
-                vec.item_list[1] + head.s,
-                vec.item_list[2] + head.l,
-            )
-        else:
-            return HSL(
-                head.h - vec.item_list[0],
-                head.s - vec.item_list[1],
-                head.l - vec.item_list[2],
-            )
 
 
 class ColorGenerator:

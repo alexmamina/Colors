@@ -100,7 +100,6 @@ class AskSize(qwidget.QDialog):
 
 
 class QBoard(qwidget.QMainWindow):
-
     def __init__(self, size: int, window_height: int, center) -> None:
         super().__init__()
         self.setWindowTitle("Väriaine")
