@@ -1,156 +1,288 @@
-from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
-if TYPE_CHECKING:
-    from qtb import QBoard
-from random import randint, sample
-from hsl_color_generator import ColorGenerator
+import PyQt6.QtCore as qcore
+import PyQt6.QtWidgets as qwidget
+import PyQt6.QtGui as qgui
+import sys
+from functools import partial
+from typing import Optional, Callable
+from math import floor
+from random import randint
+import os
+
+from color_logic import ColorLogic, Coordinates, PinnedPoints
+
+DEFAULT_WINDOW_SIZE = 500
+RED = "#ff0000"
+GREEN = "#22ff00"
 
 
-@dataclass
-class Coordinates:
-    row: int
-    col: int
+class ColorButton(qwidget.QPushButton):
+    def __init__(self, color: str, window_height: int, btn_row_size: int):
+        super(ColorButton, self).__init__()
+        button_height = floor(window_height / btn_row_size)
+        self.setAutoFillBackground(True)
+        self.setMinimumSize(qcore.QSize(button_height, button_height))
+        # Allow resizing buttons
+        policy = qwidget.QSizePolicy.Policy.Minimum
+        self.setSizePolicy(qwidget.QSizePolicy(policy, policy))
+        self.fg = "black"
+        self.set_color(color)
 
-    @classmethod
-    def random(cls, size: int) -> "Coordinates":
-        from_coords = Coordinates(randint(0, size - 1), randint(0, size - 1))
-        while PinnedPoints(size).has(from_coords):
-            from_coords = Coordinates(randint(0, size - 1), randint(0, size - 1))
-        return from_coords
+    def set_color(self, color: str):
+        self.bg = color
+        self.set_border(color)
+        self.update_style()
 
-    def pretty(self):
-        print(f"Row {self.row}, column {self.col}")
+    def set_border(self, border: str):
+        self.border = f"2px solid {border}"
+        self.update_style()
+
+    def update_style(self):
+        darker_shade = qgui.QColor(self.bg).darker(110).name()  # When clicked, button 10% darker
+        contrast_border = qgui.QColor(self.bg).darker(200).name()  # When clicked, add border
+        style = f"""
+            QPushButton {{
+                background-color: {self.bg};
+                color: {self.fg};
+                border: {self.border};
+            }}
+            QPushButton:checked {{
+                background-color: {darker_shade};
+                color: {self.fg};
+                border: 2px solid {contrast_border};
+            }}
+        """
+        self.setStyleSheet(style)
+
+    def disable(self):
+        img = qgui.QPixmap("dot.png")
+        self.setIcon(qgui.QIcon(img))
+        self.setIconSize(self.minimumSize())
+        self.setEnabled(False)
+
+    # def mouseMoveEvent(self, e):
+    #     if e.buttons() == Qt.MouseButton.LeftButton:
+    #         drag = QDrag(self)
+    #         mime = QMimeData()
+    #         drag.setMimeData(mime)
+
+    #         pixmap = QPixmap(self.size())
+    #         self.render(pixmap)
+    #         drag.setPixmap(pixmap)
+
+    #         drag.exec(Qt.DropAction.MoveAction)
 
 
-@dataclass
-class PinnedPoints:
-    board_size: int
+class AskSize(qwidget.QDialog):
+    def __init__(self, parent: "QBoard"):
+        super().__init__(parent)
 
-    def __post_init__(self):
-        # Pick the number of pinned points for the board size: 1 for size 2, 3 for size 3, 4 for 4+
-        self.TOPLEFT = Coordinates(0, 0)
-        self.TOPRIGHT = Coordinates(0, self.board_size - 1)
-        self.BOTTOMLEFT = Coordinates(self.board_size - 1, 0)
-        self.BOTTOMRIGHT = Coordinates(self.board_size - 1, self.board_size - 1)
+        self.setWindowTitle("New game!")
 
-    def get_fields_from_points(self, board: "Board") -> tuple[str, str, str, str]:
-        top_left = board.get_solution_cell(self.TOPLEFT)
-        top_right = board.get_solution_cell(self.TOPRIGHT)
-        bottom_left = board.get_solution_cell(self.BOTTOMLEFT)
-        bottom_right = board.get_solution_cell(self.BOTTOMRIGHT)
-        return top_left, top_right, bottom_left, bottom_right
+        message = qwidget.QLabel("Enter the size of the board (length, 3-10), then press Enter")
 
-    def has(self, coords: Coordinates) -> bool:
-        equals = coords == self.TOPLEFT or \
-            coords == self.TOPRIGHT or \
-            coords == self.BOTTOMLEFT or \
-            coords == self.BOTTOMRIGHT
-        return equals
+        self.input_number = qwidget.QLineEdit(self)
+        self.input_number.setMaxLength(10)
+        self.input_number.returnPressed.connect(self.save_text)
+        # Only ints, at most 2 digits
+        self.input_number.setInputMask('00')
+
+        layout = qwidget.QVBoxLayout()
+        layout.addWidget(message)
+        layout.addWidget(self.input_number)
+        self.setLayout(layout)
+
+    def save_text(self):
+        parent = self.parent()
+        # This is always true but saying for the editor
+        if parent and isinstance(parent, QBoard):
+            parent.new_game_size = int(self.input_number.text())
+        self.close()
 
 
-class Board:
-    def __init__(self, size: int):
-        assert size > 2, "The width of the board must be greater than 2 colors!"
-        self.size = size
-        self.generator = ColorGenerator(size)
-        self.solution = self.generator.generate_initial_color_board(self.size)
-        self.board = self.shuffle_board_from_solution()
+class QBoard(qwidget.QMainWindow):
 
-    def shuffle_board_from_solution(self) -> list[list[str]]:
-        corner_points = PinnedPoints(self.size).get_fields_from_points(self)
-        colors = self.flatten_board(self.solution)
-        # The analog of a 'shuffle' - sample N random colors from a list where N is just all of them
-        shuffled_colors = sample(colors, len(colors))
-        # Remove corner points from the shuffled list to set them explicitly
-        for point in corner_points:
-            shuffled_colors.pop(shuffled_colors.index(point))
-        color_board = []
-        for row in range(self.size):
-            new_row = []
-            for col in range(self.size):
-                if row == 0 and col == 0:
-                    new_row.append(corner_points[0])
-                elif row == 0 and col == self.size - 1:
-                    new_row.append(corner_points[1])
-                elif row == self.size - 1 and col == 0:
-                    new_row.append(corner_points[2])
-                elif row == self.size - 1 and col == self.size - 1:
-                    new_row.append(corner_points[3])
+    def __init__(self, size: int, window_height: int, center) -> None:
+        super().__init__()
+        self.setWindowTitle("Väriaine")
+        self.new_game_size = 0
+        self.setAcceptDrops(True)
+        self.window_height = window_height
+        self.center = center
+        self.logic = ColorLogic(size, self)
+        self.pinned_points = PinnedPoints(size)
+        self.button_grid, self.button_holder = self.create_button_grid(size)
+        self.setCentralWidget(self.button_holder)
+        shape = self.frameGeometry()
+        shape.moveCenter(center)
+        self.move(shape.topLeft())
+        self.setup_toolbar()
+        self.setMinimumSize(self.sizeHint())
+
+    # def dragEnterEvent(self, e):
+    #     e.accept()
+
+    # def dropEvent(self, e):
+    #     pos = e.position()
+    #     widget = e.source()
+    #     self.button_holder.removeWidget(widget)
+
+    #     for n in range(self.button_holder.count()):
+    #         # Get the widget at each index in turn.
+    #         w = self.button_holder.itemAt(n).widget()
+    #         if pos.x() < w.x() + w.size().width() // 2:
+    #             # We didn't drag past this widget.
+    #             # insert to the left of it.
+    #             break
+    #     else:
+    #         # We aren't on the left hand side of any widget,
+    #         # so we're at the end. Increment 1 to insert after.
+    #         n += 1
+
+    #     self.blayout.insertWidget(n, widget)
+    #     e.accept()
+
+    def setup_toolbar(self):
+        toolbar = qwidget.QToolBar("Tools")
+        self.addToolBar(toolbar)
+
+        self.add_toolbar_action(
+            toolbar,
+            "Save color palette",
+            "Save color palette as image",
+            self.save_image_palette,
+        )
+
+        self.add_toolbar_action(
+            toolbar,
+            "Save color hex codes",
+            "Save color palette as a list of hex codes",
+            self.save_colors_hex,
+        )
+
+        self.add_toolbar_action(
+            toolbar,
+            "Hint",
+            "Show a hint where one color should go (red -> green)",
+            self.show_hint,
+        )
+
+        self.add_toolbar_action(toolbar, "Hide hints", "Hide any shown hints", self.reset_hint)
+
+        self.add_toolbar_action(
+            toolbar,
+            "Start new board",
+            "Leave this palette and start a new game",
+            self.start_new,
+        )
+
+    def add_toolbar_action(self, bar: qwidget.QToolBar, title: str, hint: str, function: Callable):
+        tool_button = qgui.QAction(title, self)
+        tool_button.setToolTip(hint)
+        tool_button.triggered.connect(function)
+        bar.addAction(tool_button)
+        bar.addSeparator()
+
+    def create_button_grid(self, size: int) -> tuple[list[list[ColorButton]], qwidget.QWidget]:
+        buttons = []
+        layout = qwidget.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        for row in range(size):
+            buttons.append([])
+            for col in range(size):
+                coords = Coordinates(row, col)
+                color = self.logic.color_board.get_cell(coords)
+                color_button = ColorButton(color, self.window_height, size)
+                if not self.pinned_points.has(coords):
+                    color_button.setCheckable(True)
+                    color_button.clicked.connect(partial(self.logic.select_and_swap, coords))
                 else:
-                    new_row.append(shuffled_colors.pop())
-            color_board.append(new_row)
-        print(color_board)
-        return color_board
+                    color_button.disable()
+                layout.addWidget(color_button, row, col)
+                buttons[row].append(color_button)
 
-    def check_solved(self) -> bool:
-        return self.solution == self.board
+        button_holder = qwidget.QWidget()
+        button_holder.setLayout(layout)
 
-    def get_cell(self, coords: Coordinates):
-        return self.board[coords.row][coords.col]
+        return buttons, button_holder
 
-    def get_solution_cell(self, coords: Coordinates):
-        return self.solution[coords.row][coords.col]
+    def highlight_button(self, coords: Coordinates, color: str):
+        self.button_grid[coords.row][coords.col].set_color(color)
+        self.button_grid[coords.row][coords.col].setChecked(False)
 
-    def set_color(self, coords: Coordinates, color: str):
-        self.board[coords.row][coords.col] = color
+    def show_win(self, moves: Optional[int]):
+        win_msg = "You win!\n"
+        if moves:
+            win_msg += f"Total moves taken: {moves}.\n"
+        win_msg += "Would you like to play a new game?"
+        start_new = qwidget.QMessageBox.question(self, "You win!", win_msg)
 
-    def hint(self) -> tuple[Coordinates, Coordinates]:
-        first_coords = Coordinates.random(self.size)
-        first_color = self.get_cell(first_coords)
-        where_to_place = self.find_coords_of_color(self.solution, first_color)
-        while first_coords == where_to_place:
-            first_coords = Coordinates.random(self.size)
-            first_color = self.get_cell(first_coords)
-            where_to_place = self.find_coords_of_color(self.solution, first_color)
-        return first_coords, where_to_place
+        if start_new == qwidget.QMessageBox.StandardButton.Yes:
+            print("New")
+            self.start_new()
 
-    def find_coords_of_color(self, board: list[list[str]], color: str) -> Coordinates:
-        for row_ind in range(self.size):
-            for col_ind in range(self.size):
-                if board[row_ind][col_ind] == color:
-                    return Coordinates(row_ind, col_ind)
-        return Coordinates(0, 0)
+    def show_hint(self):
+        start_coords, where_to_go_coords = self.logic.color_board.hint()
+        self.button_grid[start_coords.row][start_coords.col].set_border(RED)
+        self.button_grid[where_to_go_coords.row][where_to_go_coords.col].set_border(GREEN)
 
-    def flatten_board(self, board: list[list[str]]) -> list[str]:
-        result = []
-        for row in board:
-            result += row
-        return result
+    def reset_hint(self):
+        for row in self.button_grid:
+            for btn in row:
+                btn.set_border(btn.bg)
+
+    def start_new(self):
+        size_dialog = AskSize(self)
+        size_dialog.exec()
+
+        self.close()
+        self.__init__(self.new_game_size, self.window_height, self.center)
+        self.show()
+        return self
+
+    def save_image_palette(self):
+        generator = self.logic.color_board.generator
+        full_path, filename = self.generate_filename("png")
+        generator.create_color_image(self.logic.solution, filename=full_path)
+        self.show_file_saved_msg(filename)
+
+    def generate_filename(self, extension: str) -> tuple[str, str]:
+        # Get home directory, save to wherever Downloads are
+        home = os.path.expanduser("~")
+        filename = f"palette-{randint(0, 10000)}.{extension}"
+        full_path = f"{home}/Downloads/{filename}"
+        return full_path, filename
+
+    def save_colors_hex(self):
+        full_path, filename = self.generate_filename("txt")
+        table = '\n'.join(['\t'.join([str(color) for color in row]) for row in self.logic.solution])
+        with open(full_path, "w") as file:
+            file.write(table)
+        self.show_file_saved_msg(filename)
+
+    def show_file_saved_msg(self, filename: str):
+        saved_img_msg = qwidget.QMessageBox(self)
+        saved_img_msg.setWindowTitle("Palette saved!")
+        saved_img_msg.setText(f"The color palette was saved to Downloads as {filename}")
+        saved_img_msg.exec()
 
 
-class ColorLogic:
-    def __init__(self, board_size: int, ui: "QBoard", show_total_moves: bool = True):
-        self.board_size = board_size
-        self.color_board = Board(board_size)
-        self.selected: Optional[Coordinates] = None
-        self.total_moves = 0
-        self.solution = self.color_board.solution
-        self.completed: bool = False
-        self.show_total_moves = show_total_moves
-        self.ui = ui
+def get_app_height_center(app: qwidget.QApplication) -> tuple[int, qcore.QPoint]:
+    screen = app.primaryScreen()
+    if screen:
+        window_height = int(screen.geometry().height() * 0.8)
+        center = screen.availableGeometry().center()
+    else:
+        window_height = DEFAULT_WINDOW_SIZE
+        center = qcore.QPoint(0, 0)
+    return window_height, center
 
-    def select_and_swap(self, coords: Coordinates):
-        if not self.selected:
-            self.selected = coords
-        elif self.selected == coords:
-            self.selected = None
-        else:
-            first_color = self.color_board.get_cell(self.selected)
-            second_color = self.color_board.get_cell(coords)
-            self.color_board.set_color(self.selected, second_color)
-            self.color_board.set_color(coords, first_color)
-            self.total_moves += 1
-            self.ui.highlight_button(self.selected, second_color)
-            self.ui.highlight_button(coords, first_color)
-            self.selected = None
-            if self.color_board.check_solved():
-                self.completed = True
-                self.show_win()
 
-    def show_win(self):
-        win_str = "Congrats!"
-        if self.show_total_moves:
-            total_moves_str = "moves" if self.total_moves > 1 else "move"
-            win_str += f" You have taken {self.total_moves} {total_moves_str} to complete the game"
-        print(win_str)
-        self.ui.show_win(self.total_moves)
+if __name__ == "__main__":
+    app = qwidget.QApplication(sys.argv)
+    screen = app.primaryScreen()
+    window_height, center = get_app_height_center(app)
+
+    window = QBoard(int(sys.argv[1]), window_height, center)
+    window.show()
+    app.exec()
