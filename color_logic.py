@@ -151,6 +151,6 @@ class ColorLogic:
         win_str = "Congrats!"
         if self.show_total_moves:
             total_moves_str = "moves" if self.total_moves > 1 else "move"
-            win_str += f" You have taken {self.total_moves} {total_moves_str} to complete the game"
+            win_str += f" You took {self.total_moves} {total_moves_str} to complete the game"
         print(win_str)
         self.ui.show_win(self.total_moves)

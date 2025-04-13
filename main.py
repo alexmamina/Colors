@@ -78,7 +78,7 @@ class AskSize(qwidget.QDialog):
 
         self.setWindowTitle("New game!")
 
-        message = qwidget.QLabel("Enter the size of the board (length, 3-10), then press Enter")
+        message = qwidget.QLabel("Enter the size of the board (width of the square, defaults to 5)")
 
         self.input_number = qwidget.QLineEdit(self)
         self.input_number.setMaxLength(10)
@@ -93,27 +93,37 @@ class AskSize(qwidget.QDialog):
 
     def save_text(self):
         parent = self.parent()
-        # This is always true but saying for the editor
+        # This is always true but the linter needs an extra check
         if parent and isinstance(parent, QBoard):
-            parent.new_game_size = int(self.input_number.text())
+            number = int(self.input_number.text()) if self.input_number.text() else 5
+            parent.game_size = number
         self.close()
 
 
 class QBoard(qwidget.QMainWindow):
-    def __init__(self, size: int, window_height: int, center) -> None:
+    def __init__(self, window_height: int, center: qcore.QPoint) -> None:
+        # Initialise and center the board
         super().__init__()
-        self.setWindowTitle("Väriaine")
-        self.new_game_size = 0
-        self.setAcceptDrops(True)
-        self.window_height = window_height
         self.center = center
-        self.logic = ColorLogic(size, self)
-        self.pinned_points = PinnedPoints(size)
-        self.button_grid, self.button_holder = self.create_button_grid(size)
-        self.setCentralWidget(self.button_holder)
+        self.window_height = window_height
+        self.setWindowTitle("Väriaine")
+        self.setAcceptDrops(True)
         shape = self.frameGeometry()
-        shape.moveCenter(center)
+        shape.moveCenter(self.center)
         self.move(shape.topLeft())
+
+        # Get the game size
+        self.game_size = 0
+        size_dialog = AskSize(self)
+        size_dialog.exec()
+
+        self.setup_game()
+
+    def setup_game(self):
+        self.logic = ColorLogic(self.game_size, self)
+        self.pinned_points = PinnedPoints(self.game_size)
+        self.button_grid, self.button_holder = self.create_button_grid(self.game_size)
+        self.setCentralWidget(self.button_holder)
         self.setup_toolbar()
         self.setMinimumSize(self.sizeHint())
 
@@ -214,9 +224,9 @@ class QBoard(qwidget.QMainWindow):
         if moves:
             win_msg += f"Total moves taken: {moves}.\n"
         win_msg += "Would you like to play a new game?"
-        start_new = qwidget.QMessageBox.question(self, "You win!", win_msg)
+        new_game = qwidget.QMessageBox.question(self, "You win!", win_msg)
 
-        if start_new == qwidget.QMessageBox.StandardButton.Yes:
+        if new_game == qwidget.QMessageBox.StandardButton.Yes:
             print("New")
             self.start_new()
 
@@ -231,13 +241,9 @@ class QBoard(qwidget.QMainWindow):
                 btn.set_border(btn.bg)
 
     def start_new(self):
-        size_dialog = AskSize(self)
-        size_dialog.exec()
-
         self.close()
-        self.__init__(self.new_game_size, self.window_height, self.center)
+        self.__init__(self.window_height, self.center)
         self.show()
-        return self
 
     def save_image_palette(self):
         generator = self.logic.color_board.generator
@@ -282,6 +288,6 @@ if __name__ == "__main__":
     screen = app.primaryScreen()
     window_height, center = get_app_height_center(app)
 
-    window = QBoard(int(sys.argv[1]), window_height, center)
+    window = QBoard(window_height, center)
     window.show()
     app.exec()
