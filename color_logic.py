@@ -134,6 +134,7 @@ class ColorLogic:
             self.selected = coords
         elif self.selected == coords:
             self.selected = None
+            self.ui.reset_selection(coords)
         else:
             first_color = self.color_board.get_cell(self.selected)
             second_color = self.color_board.get_cell(coords)

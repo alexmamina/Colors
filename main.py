@@ -13,19 +13,33 @@ from color_logic import ColorLogic, Coordinates, PinnedPoints
 DEFAULT_WINDOW_SIZE = 500
 RED = "#ff0000"
 GREEN = "#22ff00"
+BLACK = "black"
+WHITE = "white"
+TITLE = "Väriaine"
 
 
 class ColorButton(qwidget.QPushButton):
-    def __init__(self, color: str, window_height: int, btn_row_size: int):
+
+    def __init__(
+        self,
+        parent: "QBoard",
+        color: str,
+        coords: Coordinates,
+        window_height: int,
+        btn_row_size: int,
+    ):
         super(ColorButton, self).__init__()
         button_height = floor(window_height / btn_row_size)
         self.setAutoFillBackground(True)
+        self.parent_board = parent
+        self.coords = coords
         self.setMinimumSize(qcore.QSize(button_height, button_height))
         # Allow resizing buttons
         policy = qwidget.QSizePolicy.Policy.Minimum
         self.setSizePolicy(qwidget.QSizePolicy(policy, policy))
-        self.fg = "black"
+        self.fg = BLACK
         self.set_color(color)
+        self.setAcceptDrops(self.parent_board.acceptDrops())
 
     def set_color(self, color: str):
         self.bg = color
@@ -36,9 +50,14 @@ class ColorButton(qwidget.QPushButton):
         self.border = f"2px solid {border}"
         self.update_style()
 
+    def contrast_color(self, color: str) -> str:
+        r, g, b = qgui.QColor(color).red(), qgui.QColor(color).green(), qgui.QColor(color).blue()
+        brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+        return BLACK if brightness > 0.5 else WHITE
+
     def update_style(self):
         darker_shade = qgui.QColor(self.bg).darker(110).name()  # When clicked, button 10% darker
-        contrast_border = qgui.QColor(self.bg).darker(200).name()  # When clicked, add border
+        contrast_border = self.contrast_color(self.bg)
         style = f"""
             QPushButton {{
                 background-color: {self.bg};
@@ -59,17 +78,34 @@ class ColorButton(qwidget.QPushButton):
         self.setIconSize(self.minimumSize())
         self.setEnabled(False)
 
-    # def mouseMoveEvent(self, e):
-    #     if e.buttons() == Qt.MouseButton.LeftButton:
-    #         drag = QDrag(self)
-    #         mime = QMimeData()
-    #         drag.setMimeData(mime)
+    # Drag and drop events
+    def select_and_swap(self, coords: Coordinates, e: Optional[qgui.QMouseEvent]) -> None:
+        self.setChecked(True)
+        self.parent_board.logic.select_and_swap(coords)
 
-    #         pixmap = QPixmap(self.size())
-    #         self.render(pixmap)
-    #         drag.setPixmap(pixmap)
+    def mouseMoveEvent(self, e: qgui.QMouseEvent):
+        # Only move when we're accepting drops - i.e. have drag and drop enabled
+        if e.buttons() == qcore.Qt.MouseButton.LeftButton and self.acceptDrops():
+            drag = qgui.QDrag(self)
+            mime = qcore.QMimeData()
+            drag.setMimeData(mime)
 
-    #         drag.exec(Qt.DropAction.MoveAction)
+            # Double the number of pixels to avoid blurring
+            pixmap = qgui.QPixmap(self.size().width() * 2, self.size().height() * 2)
+            pixmap.setDevicePixelRatio(2)
+            self.render(pixmap)
+            drag.setPixmap(pixmap)
+            drag.setHotSpot(e.pos())
+
+            drag.exec(qcore.Qt.DropAction.MoveAction)
+            self.show()
+
+    def dragEnterEvent(self, e):
+        e.accept()
+
+    def dropEvent(self, e):
+        self.parent_board.logic.select_and_swap(self.coords)
+        e.accept()
 
 
 class AskSize(qwidget.QDialog):
@@ -106,8 +142,8 @@ class QBoard(qwidget.QMainWindow):
         super().__init__()
         self.center = center
         self.window_height = window_height
-        self.setWindowTitle("Väriaine")
         self.setAcceptDrops(True)
+        self.set_title()
         shape = self.frameGeometry()
         shape.moveCenter(self.center)
         self.move(shape.topLeft())
@@ -119,6 +155,11 @@ class QBoard(qwidget.QMainWindow):
 
         self.setup_game()
 
+    def set_title(self):
+        mode = " (Drag and drop)" if self.acceptDrops() else " (Click)"
+        self.setWindowTitle(TITLE + mode)
+        print(f"Drag and drop is now: {self.acceptDrops()}")
+
     def setup_game(self):
         self.logic = ColorLogic(self.game_size, self)
         self.pinned_points = PinnedPoints(self.game_size)
@@ -126,29 +167,6 @@ class QBoard(qwidget.QMainWindow):
         self.setCentralWidget(self.button_holder)
         self.setup_toolbar()
         self.setMinimumSize(self.sizeHint())
-
-    # def dragEnterEvent(self, e):
-    #     e.accept()
-
-    # def dropEvent(self, e):
-    #     pos = e.position()
-    #     widget = e.source()
-    #     self.button_holder.removeWidget(widget)
-
-    #     for n in range(self.button_holder.count()):
-    #         # Get the widget at each index in turn.
-    #         w = self.button_holder.itemAt(n).widget()
-    #         if pos.x() < w.x() + w.size().width() // 2:
-    #             # We didn't drag past this widget.
-    #             # insert to the left of it.
-    #             break
-    #     else:
-    #         # We aren't on the left hand side of any widget,
-    #         # so we're at the end. Increment 1 to insert after.
-    #         n += 1
-
-    #     self.blayout.insertWidget(n, widget)
-    #     e.accept()
 
     def setup_toolbar(self):
         toolbar = qwidget.QToolBar("Tools")
@@ -179,6 +197,13 @@ class QBoard(qwidget.QMainWindow):
 
         self.add_toolbar_action(
             toolbar,
+            "Toggle drag and drop",
+            "Click to swap or drag and drop colors",
+            self.toggle_drag_and_drop,
+        )
+
+        self.add_toolbar_action(
+            toolbar,
             "Start new board",
             "Leave this palette and start a new game",
             self.start_new,
@@ -201,10 +226,10 @@ class QBoard(qwidget.QMainWindow):
             for col in range(size):
                 coords = Coordinates(row, col)
                 color = self.logic.color_board.get_cell(coords)
-                color_button = ColorButton(color, self.window_height, size)
+                color_button = ColorButton(self, color, coords, self.window_height, size)
                 if not self.pinned_points.has(coords):
                     color_button.setCheckable(True)
-                    color_button.clicked.connect(partial(self.logic.select_and_swap, coords))
+                    color_button.mousePressEvent = partial(color_button.select_and_swap, coords)
                 else:
                     color_button.disable()
                 layout.addWidget(color_button, row, col)
@@ -217,7 +242,17 @@ class QBoard(qwidget.QMainWindow):
 
     def highlight_button(self, coords: Coordinates, color: str):
         self.button_grid[coords.row][coords.col].set_color(color)
+        self.reset_selection(coords)
+
+    def reset_selection(self, coords: Coordinates):
         self.button_grid[coords.row][coords.col].setChecked(False)
+
+    def toggle_drag_and_drop(self):
+        for row in self.button_grid:
+            for button in row:
+                button.setAcceptDrops(not button.acceptDrops())
+        self.setAcceptDrops(not self.acceptDrops())
+        self.set_title()
 
     def show_win(self, moves: Optional[int]):
         win_msg = "You win!\n"
