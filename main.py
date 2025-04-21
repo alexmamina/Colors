@@ -17,6 +17,8 @@ BLACK = "black"
 WHITE = "white"
 TITLE = "Väriaine"
 
+# camelCase methods are inherited from PyQt6; snake_case methods are specific to the implementation
+
 
 class ColorButton(qwidget.QPushButton):
 
