@@ -244,6 +244,9 @@ class QBoard(qwidget.QMainWindow):
         self.button_grid[coords.row][coords.col].set_color(color)
         self.reset_selection(coords)
 
+    def select_button(self, coords: Coordinates):
+        self.button_grid[coords.row][coords.col].setChecked(True)
+
     def reset_selection(self, coords: Coordinates):
         self.button_grid[coords.row][coords.col].setChecked(False)
 

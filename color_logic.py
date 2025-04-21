@@ -132,6 +132,7 @@ class ColorLogic:
     def select_and_swap(self, coords: Coordinates):
         if not self.selected:
             self.selected = coords
+            self.ui.select_button(coords)
         elif self.selected == coords:
             self.selected = None
             self.ui.reset_selection(coords)
