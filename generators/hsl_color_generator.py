@@ -1,10 +1,10 @@
 from random import randint
 from PIL import Image
 from typing import Any, Optional
-from vector_math import Vector, points_on_a_circle
+from generators.vector_math import Vector, points_on_a_circle
 import sys
 import matplotlib.pyplot as plt
-from colors import HSL, RGB
+from generators.colors import HSL, RGB
 import copy
 
 

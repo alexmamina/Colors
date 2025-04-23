@@ -8,7 +8,7 @@ from math import floor
 from random import randint
 import os
 
-from color_logic import ColorLogic, Coordinates, PinnedPoints
+from generators.color_logic import ColorLogic, Coordinates, PinnedPoints
 
 DEFAULT_WINDOW_SIZE = 500
 RED = "#ff0000"
@@ -16,6 +16,8 @@ GREEN = "#22ff00"
 BLACK = "black"
 WHITE = "white"
 TITLE = "Väriaine"
+
+BASEDIR = os.path.dirname(__file__)
 
 # camelCase methods are inherited from PyQt6; snake_case methods are specific to the implementation
 
@@ -75,7 +77,7 @@ class ColorButton(qwidget.QPushButton):
         self.setStyleSheet(style)
 
     def disable(self):
-        img = qgui.QPixmap("dot.png")
+        img = qgui.QPixmap(os.path.join(BASEDIR, "images", "dot.png"))
         self.setIcon(qgui.QIcon(img))
         self.setIconSize(self.minimumSize())
         self.setEnabled(False)
@@ -149,8 +151,8 @@ class QBoard(qwidget.QMainWindow):
         shape = self.frameGeometry()
         shape.moveCenter(self.center)
         self.move(shape.topLeft())
-        # icon = qgui.QPixmap("colors-icon.icns")
-        self.setWindowIcon(qgui.QIcon("colors-icon-rounded.icns"))
+        # icon = qgui.QPixmap("images/colors-icon.icns")
+        self.setWindowIcon(qgui.QIcon(os.path.join(BASEDIR, "images", "colors-icon-rounded.icns")))
 
         # Get the game size
         self.game_size = 0

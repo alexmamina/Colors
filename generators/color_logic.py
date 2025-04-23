@@ -3,7 +3,7 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from main import QBoard
 from random import randint, sample
-from hsl_color_generator import ColorGenerator
+from generators.hsl_color_generator import ColorGenerator
 
 
 @dataclass

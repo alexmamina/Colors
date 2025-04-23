@@ -1,7 +1,7 @@
 import unittest.mock
 import main
 import unittest
-from hsl_color_generator import ColorGenerator
+from generators.hsl_color_generator import ColorGenerator
 
 
 class Tests(unittest.TestCase):
