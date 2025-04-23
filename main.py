@@ -149,6 +149,8 @@ class QBoard(qwidget.QMainWindow):
         shape = self.frameGeometry()
         shape.moveCenter(self.center)
         self.move(shape.topLeft())
+        # icon = qgui.QPixmap("colors-icon.icns")
+        self.setWindowIcon(qgui.QIcon("colors-icon-rounded.icns"))
 
         # Get the game size
         self.game_size = 0
