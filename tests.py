@@ -2,6 +2,7 @@ import unittest.mock
 import main
 import unittest
 from generators.hsl_color_generator import ColorGenerator
+from generators.colors import HSL, RGB
 
 
 class Tests(unittest.TestCase):
@@ -106,3 +107,29 @@ class Tests(unittest.TestCase):
                     generator.linear_gradient(color1, color2, size)
             if i % 200 == 0:
                 print(f"{i} done!")
+
+    def test_hls(self):
+        for h in range(0, 36):
+            for s in range(10):
+                for li in range(10):
+                    with self.subTest(params=[h, s, li]):
+                        hsl = HSL(h, s, li)
+                        hls = hsl.to_hls()
+                        new_hsl = HSL.from_hls(*hls)
+                        assert new_hsl == hsl, f"{new_hsl} is not the same as {hsl}"
+
+    def test_rgb(self):
+        for r in range(25):
+            for g in range(25):
+                for b in range(25):
+                    with self.subTest(params=[r, g, b]):
+                        rgb = RGB(r, g, b)
+                        hls = rgb.to_hls()
+                        new_rgb = RGB.from_hls(*hls)
+                        assert new_rgb == rgb, f"{new_rgb} is not the same as {rgb}"
+
+    def test_rgb_hex(self):
+        hex = "#ff3456"
+        rgb = RGB.from_hex(hex)
+        new_hex = rgb.to_hex()
+        assert new_hex == hex, f"{new_hex} is not the same as {hex}"

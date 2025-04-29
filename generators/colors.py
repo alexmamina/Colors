@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import colorsys
 from PIL import ImageColor
 
+# Conversion: HSL -> HLS -> RGB -> Hex
+
 
 @dataclass
 class RGB:
@@ -22,6 +24,10 @@ class RGB:
     def to_hex(self) -> str:
         return '#{:02x}{:02x}{:02x}'.format(self.r, self.g, self.b)
 
+    def to_hls(self) -> tuple[float, float, float]:
+        normalised_rgb = [x / 255 for x in self.as_tuple()]
+        return colorsys.rgb_to_hls(*normalised_rgb)
+
     def as_tuple(self) -> tuple[int, int, int]:
         return self.r, self.g, self.b
 
@@ -29,6 +35,11 @@ class RGB:
     def from_hex(cls, hex_number: str) -> "RGB":
         red, green, blue = ImageColor.getcolor(hex_number, "RGB")
         return RGB(red, green, blue)
+
+    @classmethod
+    def from_hls(cls, h: float, l: float, s: float) -> "RGB":  # noqa: E741
+        normalised_rgb = colorsys.hls_to_rgb(h, l, s)
+        return RGB(*[round(255 * x) for x in normalised_rgb])
 
 
 @dataclass
@@ -49,21 +60,23 @@ class HSL:
     def __repr__(self) -> str:
         return f"HSL(h={self.h}, s={self.s}, l={self.l})"
 
+    def __eq__(self, other: "HSL") -> bool:
+        return self.h == other.h and self.s == other.s and self.l == other.l
+
     def to_hls(self) -> tuple:
         return (self.h / 360, self.l / 100, self.s / 100)
 
     def to_hex(self) -> str:
-        rgb = RGB(*[int(255 * x) for x in colorsys.hls_to_rgb(*self.to_hls())])
+        rgb = RGB(*[round(255 * x) for x in colorsys.hls_to_rgb(*self.to_hls())])
         return rgb.to_hex()
 
     def min_distance_to_bounds(self) -> int:
         # H: 0-360
-        # S: 0-100
+        # Ignore saturation as it's pinned
         # L: 0-100
         min_h = min(self.h, 360 - self.h)
-        min_s = min(self.s, 100 - self.s)
         min_l = min(self.l, 100 - self.l)
-        return min(min_h, min_s, min_l)
+        return min(min_h, min_l)
 
     @classmethod
     def from_list(cls, int_list: list[int]) -> "HSL":
@@ -74,3 +87,12 @@ class HSL:
         return HSL(
             round((one.h + two.h) / 2), round((one.s + two.s) / 2), round((one.l + two.l) / 2)
         )
+
+    @classmethod
+    def from_hls(cls, h: float, l: float, s: float) -> "HSL":  # noqa: E741
+        return HSL(round(h * 360), round(s * 100), round(l * 100))
+
+    @classmethod
+    def from_hex(cls, hex: str) -> "HSL":
+        h, l, s = RGB.from_hex(hex).to_hls()
+        return HSL.from_hls(h, l, s)

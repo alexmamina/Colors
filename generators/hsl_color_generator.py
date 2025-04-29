@@ -1,29 +1,15 @@
 from random import randint
 from PIL import Image
 from typing import Any, Optional
-from generators.vector_math import Vector, points_on_a_circle
+if __name__ == "__main__":
+    from vector_math import Vector, points_on_a_circle
+    from colors import HSL, RGB
+    import matplotlib.pyplot as plt
+else:
+    from generators.vector_math import Vector, points_on_a_circle
+    from generators.colors import HSL, RGB
 import sys
-import matplotlib.pyplot as plt
-from generators.colors import HSL, RGB
 import copy
-
-
-def draw(points: list["HSL"]):
-    print(points)
-    figure = plt.figure().add_subplot(projection='3d')
-    ax = plt.gca()
-    ax.set_xlim(360.0)
-    ax.set_ylim(100.0)
-
-    for point in points:
-        figure.scatter(
-            point.h,
-            point.s,
-            point.l,
-            c=point.to_hex()
-        )
-
-    plt.show()
 
 
 class ColorGenerator:
@@ -71,36 +57,30 @@ class ColorGenerator:
             result.append(hsl)
         return result
 
-    # def generate_board(self, size: int) -> list[list[HSL]]:
-    #     # [tl, tr], [bl, br] = self.generate_starting_points()
-    #     # [tl, tr], [bl, br] = self.generate_points_from_circle_smaller_range()
-    #     [tl, tr], [bl, br] = self.generate_points_from_circle_across_colors()
-    #     results = []
-    #     hor_gradients = []
-    #     ver_gradients = []
-    #     rightcol = self.linear_gradient(tr, br, size)
-    #     leftcol = self.linear_gradient(tl, bl, size)
-    #     toprow = self.linear_gradient(tl, tr, size)
-    #     bottomrow = self.linear_gradient(bl, br, size)
-    #     for i in range(len(rightcol)):
-    #         hor_gradients.append(self.linear_gradient(leftcol[i], rightcol[i], size))
-    #         ver_gradients.append(self.linear_gradient(toprow[i], bottomrow[i], size))
-    #     for row in range(len(hor_gradients)):
-    #         avg_row = []
-    #         for col in range(len(hor_gradients)):
-    #             avg_row.append(HSL.average(hor_gradients[row][col], ver_gradients[row][col]))
-    #         results.append(avg_row)
-    #     return results
+    def full_color_image(self) -> tuple[list[HSL], list[HSL]]:
+        # Compare h <-> l relations
+        # pin = randint(10, 80)
+        # tl = HSL(0, pin, 0)
+        # tr = HSL(0, pin, 100)
+        # bl = HSL(360, pin, 0)
+        # br = HSL(360, pin, 100)
+        # Compare h <-> s relations. L is 50 as 0/100 are black/white
+        tl = HSL(0, 0, 50)
+        tr = HSL(0, 30, 50)
+        bl = HSL(360, 0, 50)
+        br = HSL(360, 30, 50)
+        return [tl, tr], [bl, br]
 
     def generate_board(self, size: int) -> list[list[HSL]]:
         # [tl, tr], [bl, br] = self.generate_starting_points()
         [tl, tr], [bl, br] = self.generate_points_from_circle_smaller_range()
+        # [tl, tr], [bl, br] = self.full_color_image()
         # [tl, tr], [bl, br] = self.generate_points_from_circle_across_colors()
         results = []
         rightcol = self.linear_gradient(tr, br, size)
         leftcol = self.linear_gradient(tl, bl, size)
         for i in range(len(rightcol)):
-            results.append(self.linear_gradient(rightcol[i], leftcol[i], size))
+            results.append(self.linear_gradient(leftcol[i], rightcol[i], size))
         return results
 
     def rotate_points(self, points: list[list[HSL]]) -> list[list[HSL]]:
@@ -146,14 +126,13 @@ class ColorGenerator:
         # Largest circle before we reach the HSL limits
         max_radius = centre.min_distance_to_bounds()
         min_radius = 30
-        while min_radius + 2 >= max_radius - 2:
+        while min_radius + 2 >= max_radius - 2 or pin <= 20:
             centre = self.random_color()
             pin = centre.s
             max_radius = centre.min_distance_to_bounds()
         radius = randint(min_radius + 1, max_radius - 1)
-
         # Generate points
-        points = points_on_a_circle((centre.h, centre.s), radius)
+        points = points_on_a_circle((centre.h, centre.l), radius)
         points = [HSL(h, pin, l) for h, l in points]
         points = [points[:2], points[2:]]
         return points
@@ -166,7 +145,7 @@ class ColorGenerator:
         min_radius = 10
         while min_radius + 2 >= max_radius - 2:
             centre = (randint(0, 100), randint(0, 100))
-            pin = randint(1, 100)
+            pin = randint(5, 90)
             # Largest circle before we reach the HSL limits
             max_radius = min(centre[0], centre[1], 100 - centre[0], 100 - centre[1], pin, 100 - pin)
         radius = randint(min_radius + 1, max_radius - 1)
@@ -189,11 +168,46 @@ class ColorGenerator:
 
 
 if __name__ == "__main__":
+
+    def draw(points: list["HSL"]):
+        figure = plt.figure().add_subplot(projection='3d')
+        ax = plt.gca()
+        ax.set_xlim(360.0)
+        ax.set_ylim(100.0)
+
+        for point in points:
+            figure.scatter(
+                point.h,
+                point.s,
+                point.l,
+                c=point.to_hex()
+            )
+
+        plt.show()
+
+    def draw_2d(points: list[Any]):
+        figure = plt.figure().add_subplot()
+        ax = plt.gca()
+        ax.set_xlim(360.0)
+        ax.set_ylim(100.0)
+
+        for po in points:
+            point = HSL.from_hex(po)
+            figure.scatter(
+                point.h,
+                # point.s,
+                point.l,
+                c=point.to_hex()
+            )
+
+        plt.show()
+
     size = 10
     image_num = 10
     cg = ColorGenerator(size)
     testing = len(sys.argv) > 1 and sys.argv[1] == "t"
-    skip_draw = len(sys.argv) > 1 and sys.argv[1] == "s"
+    skip_draw = len(sys.argv) > 1 and "s" in sys.argv
+    circle = len(sys.argv) > 1 and "c" in sys.argv
 
     if testing:
         print("Testing")
@@ -207,19 +221,15 @@ if __name__ == "__main__":
                     pass
 
     print("Drawing")
+    points = []
     for i in range(image_num):
         try:
             board = cg.generate_initial_color_board(size)
+            points += [board[0][0], board[0][-1], board[-1][0], board[-1][-1]]
             if not skip_draw:
                 cg.create_color_image(board)
         except AssertionError:
             print(f"#{i} for size {size} - out of bounds")
             pass
-    # draw(
-    #     [
-    #         HSL(h=247, s=100, l=50),
-    #         HSL(h=17, s=100, l=50),
-    #         HSL(h=351, s=100, l=56),
-    #         HSL(h=310, s=100, l=50),
-    #     ]
-    # )
+    if circle:
+        draw_2d(points)
