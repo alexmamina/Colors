@@ -41,7 +41,7 @@ class ColorButton(qwidget.QPushButton):
         # Allow resizing buttons
         policy = qwidget.QSizePolicy.Policy.Minimum
         self.setSizePolicy(qwidget.QSizePolicy(policy, policy))
-        self.fg = BLACK
+        self.fg = self.contrast_color(color)
         self.set_color(color)
         self.setAcceptDrops(self.parent_board.acceptDrops())
 
